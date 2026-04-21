@@ -902,6 +902,23 @@
     <div class="auth-title">生產排程與成本管理系統</div>
     <div class="auth-sub">DerLife Production &amp; Cost Management</div>
     <div class="auth-desc">此系統僅供授權人員使用<br>請使用 Google 帳號登入</div>
+
+    <!-- 內嵌瀏覽器警告（LINE/FB/IG 等） -->
+    <div id="webview-warning" style="display:none;background:#fff3cd;border:1.5px solid #ffc107;border-radius:8px;padding:14px 16px;margin-bottom:18px;text-align:left">
+      <div style="font-size:14px;font-weight:700;color:#856404;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span style="font-size:18px">⚠️</span>偵測到內嵌瀏覽器
+      </div>
+      <div style="font-size:12px;color:#856404;line-height:1.6;margin-bottom:10px">
+        Google 不允許在 <strong>LINE / FB / IG</strong> 等 App 內建瀏覽器登入。<br>
+        請用下方按鈕或右上 <strong>⋯</strong> 選「<strong>在瀏覽器開啟</strong>」，改用 Safari / Chrome 開啟。
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button id="btn-open-external" style="background:var(--gold);color:var(--ink);border:none;border-radius:6px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">🌐 在預設瀏覽器開啟</button>
+        <button id="btn-copy-url" style="background:transparent;color:var(--ink2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:'Noto Sans TC',sans-serif">📋 複製網址（再貼到 Safari/Chrome）</button>
+      </div>
+      <div id="webview-copy-msg" style="font-size:11px;color:var(--green);margin-top:6px;min-height:14px"></div>
+    </div>
+
     <button class="auth-btn" id="btn-google-login">
       <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
       使用 Google 登入
@@ -8131,6 +8148,87 @@ iwrRenderAll();
     const el = document.getElementById('auth-msg');
     if (el) el.textContent = String(msg).slice(0, 120);
   };
+
+  // ===== 偵測內嵌瀏覽器（LINE/FB/IG 等 WebView） =====
+  (function detectWebView() {
+    const ua = navigator.userAgent || '';
+    // 常見內嵌瀏覽器特徵
+    const isLine = /Line\//i.test(ua);
+    const isFB = /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua);
+    const isIG = /Instagram/i.test(ua);
+    const isMessenger = /Messenger/i.test(ua);
+    const isWeChat = /MicroMessenger/i.test(ua);
+    // iOS WebView（非 Safari）
+    const isIOSWebView = /iPhone|iPad|iPod/i.test(ua) && !/Safari/i.test(ua);
+    // Android WebView
+    const isAndroidWebView = /Android/i.test(ua) && /wv/i.test(ua);
+
+    const inApp = isLine || isFB || isIG || isMessenger || isWeChat || isIOSWebView || isAndroidWebView;
+    if (!inApp) return;
+
+    const warn = document.getElementById('webview-warning');
+    const loginBtn = document.getElementById('btn-google-login');
+    if (warn) warn.style.display = 'block';
+    if (loginBtn) loginBtn.style.opacity = '0.5';
+
+    // 按「在預設瀏覽器開啟」
+    const openBtn = document.getElementById('btn-open-external');
+    if (openBtn) {
+      openBtn.addEventListener('click', () => {
+        const url = window.location.href;
+        // Android：用 intent:// 強制 Chrome
+        if (/Android/i.test(ua)) {
+          const cleanUrl = url.replace(/^https?:\/\//, '');
+          window.location.href = 'intent://' + cleanUrl + '#Intent;scheme=https;package=com.android.chrome;end';
+        } else {
+          // iOS：嘗試 x-safari-https:// 協定
+          const iosUrl = url.replace(/^https?:\/\//, 'x-safari-https://');
+          window.location.href = iosUrl;
+          // 備援：提示使用者手動
+          setTimeout(() => {
+            const msg = document.getElementById('webview-copy-msg');
+            if (msg) {
+              msg.textContent = '若未跳轉，請點右上 ⋯ 選「在 Safari 開啟」';
+              msg.style.color = 'var(--red)';
+            }
+          }, 1500);
+        }
+      });
+    }
+
+    // 複製網址
+    const copyBtn = document.getElementById('btn-copy-url');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const url = window.location.href;
+        const msg = document.getElementById('webview-copy-msg');
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+          } else {
+            // 備援
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          if (msg) {
+            msg.textContent = '✓ 已複製網址，請貼到 Safari / Chrome';
+            msg.style.color = 'var(--green)';
+          }
+        } catch (e) {
+          if (msg) {
+            msg.textContent = '複製失敗，請手動複製網址列';
+            msg.style.color = 'var(--red)';
+          }
+        }
+      });
+    }
+  })();
 
   // ===== 登入（直接用 redirect，避開 Chrome COOP popup 問題） =====
   document.getElementById('btn-google-login').addEventListener('click', async () => {
