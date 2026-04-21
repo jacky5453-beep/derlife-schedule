@@ -7483,7 +7483,7 @@ iwrRenderAll();
 <!-- ===== Firebase Authentication + 白名單驗證 ===== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, browserPopupRedirectResolver }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, deleteDoc, getDoc, getDocs, collection, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -7509,7 +7509,7 @@ iwrRenderAll();
   // 全域狀態
   window.__auth = { user: null, role: null, db, auth };
 
-  // ===== 登入 =====
+  // ===== 登入（先嘗試 popup，失敗改用 redirect） =====
   document.getElementById('btn-google-login').addEventListener('click', async () => {
     const msg = document.getElementById('auth-msg');
     msg.textContent = '登入中…';
@@ -7517,7 +7517,32 @@ iwrRenderAll();
     try {
       await signInWithPopup(auth, provider);
     } catch (err) {
+      console.warn('Popup 登入失敗，改用 redirect：', err.code);
+      // popup 被擋（COOP/popup-blocked）→ 改用 redirect
+      if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/web-storage-unsupported', 'auth/internal-error'].includes(err.code)
+          || String(err.message || '').includes('Cross-Origin')) {
+        try {
+          msg.textContent = '轉跳 Google 登入頁…';
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (err2) {
+          console.error(err2);
+          msg.textContent = '登入失敗：' + (err2.code || err2.message);
+          msg.className = 'auth-msg error';
+          return;
+        }
+      }
       console.error(err);
+      msg.textContent = '登入失敗：' + (err.code || err.message);
+      msg.className = 'auth-msg error';
+    }
+  });
+
+  // ===== 處理 redirect 回來的結果 =====
+  getRedirectResult(auth).catch(err => {
+    console.error('Redirect result 錯誤：', err);
+    const msg = document.getElementById('auth-msg');
+    if (msg) {
       msg.textContent = '登入失敗：' + (err.code || err.message);
       msg.className = 'auth-msg error';
     }
