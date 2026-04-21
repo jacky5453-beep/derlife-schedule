@@ -7509,30 +7509,15 @@ iwrRenderAll();
   // 全域狀態
   window.__auth = { user: null, role: null, db, auth };
 
-  // ===== 登入（先嘗試 popup，失敗改用 redirect） =====
+  // ===== 登入（直接用 redirect，避開 Chrome COOP popup 問題） =====
   document.getElementById('btn-google-login').addEventListener('click', async () => {
     const msg = document.getElementById('auth-msg');
-    msg.textContent = '登入中…';
+    msg.textContent = '轉跳 Google 登入頁…';
     msg.className = 'auth-msg';
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (err) {
-      console.warn('Popup 登入失敗，改用 redirect：', err.code);
-      // popup 被擋（COOP/popup-blocked）→ 改用 redirect
-      if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/web-storage-unsupported', 'auth/internal-error'].includes(err.code)
-          || String(err.message || '').includes('Cross-Origin')) {
-        try {
-          msg.textContent = '轉跳 Google 登入頁…';
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch (err2) {
-          console.error(err2);
-          msg.textContent = '登入失敗：' + (err2.code || err2.message);
-          msg.className = 'auth-msg error';
-          return;
-        }
-      }
-      console.error(err);
+      console.error('Redirect 登入失敗：', err);
       msg.textContent = '登入失敗：' + (err.code || err.message);
       msg.className = 'auth-msg error';
     }
