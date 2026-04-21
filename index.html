@@ -639,7 +639,8 @@
   /* ===== AUTH / LOGIN / ADMIN ===== */
   body.auth-pending > *:not(#auth-overlay):not(#unauthorized) { display: none !important; }
   body.auth-denied > *:not(#unauthorized) { display: none !important; }
-  #auth-overlay { position: fixed; inset: 0; background: var(--ink); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  #auth-overlay { position: fixed; inset: 0; background: var(--ink); display: none; align-items: center; justify-content: center; z-index: 9999; }
+  body.auth-pending #auth-overlay { display: flex; }
   .auth-box { background: var(--paper); padding: 40px 36px; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; max-width: 420px; width: 92%; border-top: 4px solid var(--gold); }
   .auth-logo-img { height: 56px; margin-bottom: 14px; object-fit: contain; }
   .auth-title { font-family: 'Noto Serif TC', serif; font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: 3px; margin-bottom: 6px; }
