@@ -7483,7 +7483,7 @@ iwrRenderAll();
 <!-- ===== Firebase Authentication + 白名單驗證 ===== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, browserPopupRedirectResolver }
+  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, deleteDoc, getDoc, getDocs, collection, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -7506,8 +7506,18 @@ iwrRenderAll();
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
+  // 強制使用 local persistence（避免 redirect 後 session 丟失）
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => console.log('[AUTH] persistence = local'))
+    .catch(e => console.error('[AUTH] setPersistence failed', e));
+
   // 全域狀態
   window.__auth = { user: null, role: null, db, auth };
+  window.__authDebug = (msg, data) => {
+    console.log('[AUTH]', msg, data || '');
+    const el = document.getElementById('auth-msg');
+    if (el) el.textContent = String(msg).slice(0, 120);
+  };
 
   // ===== 登入（直接用 redirect，避開 Chrome COOP popup 問題） =====
   document.getElementById('btn-google-login').addEventListener('click', async () => {
@@ -7517,21 +7527,31 @@ iwrRenderAll();
     try {
       await signInWithRedirect(auth, provider);
     } catch (err) {
-      console.error('Redirect 登入失敗：', err);
+      console.error('[AUTH] signInWithRedirect 失敗：', err);
       msg.textContent = '登入失敗：' + (err.code || err.message);
       msg.className = 'auth-msg error';
     }
   });
 
   // ===== 處理 redirect 回來的結果 =====
-  getRedirectResult(auth).catch(err => {
-    console.error('Redirect result 錯誤：', err);
-    const msg = document.getElementById('auth-msg');
-    if (msg) {
-      msg.textContent = '登入失敗：' + (err.code || err.message);
-      msg.className = 'auth-msg error';
-    }
-  });
+  console.log('[AUTH] 檢查 redirect result…');
+  getRedirectResult(auth)
+    .then(result => {
+      console.log('[AUTH] getRedirectResult 結果：', result);
+      if (result && result.user) {
+        console.log('[AUTH] redirect 登入成功：', result.user.email);
+      } else {
+        console.log('[AUTH] 沒有 redirect result（正常，可能是已登入或首次進入）');
+      }
+    })
+    .catch(err => {
+      console.error('[AUTH] getRedirectResult 錯誤：', err.code, err.message, err);
+      const msg = document.getElementById('auth-msg');
+      if (msg) {
+        msg.textContent = '登入失敗：' + (err.code || err.message);
+        msg.className = 'auth-msg error';
+      }
+    });
 
   // ===== 登出 =====
   window.doLogout = async function() {
@@ -7543,12 +7563,16 @@ iwrRenderAll();
   // ===== 驗證白名單 =====
   async function verifyWhitelist(user) {
     const email = (user.email || '').toLowerCase();
+    console.log('[AUTH] verifyWhitelist start for:', email);
 
     // 預設管理員：自動確保存在於白名單
     if (email === DEFAULT_ADMIN) {
+      console.log('[AUTH] 這是預設管理員，確保白名單紀錄存在');
       const ref = doc(db, WHITELIST_COLLECTION, email);
       const snap = await getDoc(ref);
+      console.log('[AUTH] 白名單讀取成功，exists?', snap.exists());
       if (!snap.exists()) {
+        console.log('[AUTH] 白名單不存在，寫入預設管理員…');
         await setDoc(ref, {
           email,
           role: 'admin',
@@ -7556,6 +7580,7 @@ iwrRenderAll();
           createdAt: serverTimestamp(),
           isDefault: true
         });
+        console.log('[AUTH] 預設管理員寫入成功');
       }
       return 'admin';
     }
@@ -7568,6 +7593,7 @@ iwrRenderAll();
 
   // ===== Auth State 監聽 =====
   onAuthStateChanged(auth, async (user) => {
+    console.log('[AUTH] onAuthStateChanged fired, user =', user ? user.email : 'null');
     if (!user) {
       document.body.classList.add('auth-pending');
       document.body.classList.remove('auth-denied');
@@ -7576,6 +7602,7 @@ iwrRenderAll();
 
     try {
       const role = await verifyWhitelist(user);
+      console.log('[AUTH] verifyWhitelist 回傳 role =', role);
       if (!role) {
         // 未在白名單
         document.getElementById('unauth-email').textContent = user.email;
