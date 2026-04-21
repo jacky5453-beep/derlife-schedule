@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>得來素 生產排程與成本管理系統</title>
+<!-- SheetJS for Excel 匯入 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
 
@@ -681,9 +683,213 @@
   #unauthorized p { color: var(--ink3); font-size: 13px; margin-bottom: 8px; line-height: 1.7; }
   #unauthorized .email-box { font-family: monospace; color: var(--ink); font-weight: 700; background: var(--border-light); padding: 8px 14px; border-radius: 4px; display: inline-block; margin: 10px 0; font-size: 12px; }
   #unauthorized .logout-btn { margin-top: 18px; background: var(--ink); border: none; color: #fff; padding: 10px 24px; border-radius: 6px; font-weight: 700; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; font-size: 13px; }
+  /* ===== 匯入 Excel 區塊 ===== */
+  .sched-import-bar {
+    background: linear-gradient(135deg, #fffef9, #f5ead8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .sched-import-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink2);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .sched-import-hint {
+    font-size: 12px;
+    color: var(--ink3);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+  .sched-import-hint code {
+    background: var(--ink2);
+    color: var(--gold);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+  .sched-import-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .sched-import-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ink2);
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .sched-import-btn:hover {
+    background: var(--ink);
+    color: var(--gold2);
+  }
+
+  /* ==============================================
+     ========== RWD 全面改造（響應式設計） =========
+     ============================================== */
+
+  /* 平板（<=960px） */
+  @media (max-width: 960px) {
+    .header { padding: 14px 18px 12px; gap: 12px; }
+    .header img { height: 44px !important; }
+    .header-logo { font-size: 22px; letter-spacing: 3px; }
+    .header-sub { font-size: 11px; letter-spacing: 1px; }
+    .main { padding: 14px 14px; max-width: 100%; }
+    .tab-btn { padding: 9px 14px; font-size: 12px; }
+    .section-title { font-size: 16px; }
+    .col-header { font-size: 14px; padding: 9px 14px; }
+    .input-block { padding: 12px 14px; }
+    .input-block-title { font-size: 15px; }
+  }
+
+  /* 手機（<=640px） */
   @media (max-width: 640px) {
+    /* Header */
+    .header {
+      padding: 10px 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .header img { height: 36px !important; }
+    .header-logo { font-size: 16px; letter-spacing: 2px; }
+    .header-sub { font-size: 10px; letter-spacing: 0.5px; margin-top: 1px; }
+    .user-chip {
+      margin-left: auto;
+      padding: 2px 4px 2px 2px;
+      gap: 4px;
+    }
+    .user-chip img { width: 24px; height: 24px; }
     .user-chip .user-name { display: none; }
-    .auth-box { padding: 30px 22px; }
+    .user-chip .role-badge {
+      padding: 1px 6px;
+      font-size: 9px;
+    }
+    .user-chip .logout-btn {
+      padding: 2px 8px;
+      font-size: 10px;
+    }
+
+    /* Tabs */
+    .tabs-wrap {
+      padding: 0 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab-btn {
+      padding: 8px 10px;
+      font-size: 11px;
+      letter-spacing: 0;
+    }
+
+    /* Main */
+    .main { padding: 10px 8px; }
+    .section-title { font-size: 15px; margin-bottom: 12px; padding-bottom: 6px; }
+    .card { padding: 12px; margin-bottom: 12px; }
+
+    /* Input blocks */
+    .col-header { font-size: 13px; padding: 8px 12px; letter-spacing: 1px; }
+    .input-block { padding: 10px 12px; }
+    .input-block-title { font-size: 13px; margin-bottom: 8px; letter-spacing: 1px; }
+
+    /* .irow：手機上 label 縮小、input 縮小，但保持 inline */
+    .irow { padding: 6px 0; }
+    .irow label { font-size: 13px; }
+    .ifield input { width: 74px; padding: 5px 6px; font-size: 14px; }
+    .ifield .unit { font-size: 12px; min-width: 16px; }
+
+    /* .irow-with-remark：欄位多，手機改兩行布局 */
+    .irow-with-remark {
+      flex-wrap: wrap;
+      gap: 4px 6px;
+      padding: 8px 0;
+    }
+    .irow-with-remark label {
+      flex: 0 0 100%;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    .irow-with-remark .ifield input { width: 68px; }
+    .irow-remark-input {
+      flex: 1 0 100%;
+      margin-top: 4px;
+      font-size: 11px;
+    }
+
+    /* Result / inventory / input 自適應 grid */
+    .input-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .result-grid { grid-template-columns: 1fr; gap: 8px; }
+    .inventory-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .inv-card { padding: 8px; }
+    .inv-card .inv-val { font-size: 18px; }
+
+    /* 表格：轉為橫向捲動 */
+    .data-table { font-size: 12px; }
+    .data-table th, .data-table td { padding: 6px 8px; }
+
+    /* 當月排程 */
+    .sched-day-header { padding: 8px 10px; gap: 6px; }
+    .sched-date-num { font-size: 14px; min-width: 28px; }
+    .sched-weekday { font-size: 11px; }
+    .sched-fri-badge { font-size: 10px; padding: 1px 6px; }
+    .sched-summary { font-size: 11px; white-space: normal; flex-basis: 100%; margin-top: 2px; }
+    .sched-day-body { padding: 10px 12px; }
+
+    /* Auth */
+    .auth-box { padding: 28px 20px; }
+    .auth-title { font-size: 17px; letter-spacing: 2px; }
+    .auth-sub { font-size: 10px; }
+    .auth-desc { font-size: 12px; }
+    .auth-btn { padding: 10px 22px; font-size: 13px; }
+
+    /* Admin */
+    .admin-card { padding: 14px; }
+    .whitelist-row {
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 10px;
+    }
+    .whitelist-row .email { flex: 1 0 100%; font-size: 12px; }
+    .add-row input { min-width: 100%; }
+
+    /* 匯入 */
+    .sched-import-bar { padding: 10px 12px; }
+    .sched-import-title { font-size: 13px; }
+    .sched-import-hint { font-size: 11px; }
+    .sched-import-btn { padding: 7px 14px; font-size: 12px; }
+
+    /* Modal 在手機上全寬 */
+    #clear-confirm-modal > div,
+    #clear-applied-modal > div,
+    #sched-import-modal > div {
+      max-width: 100% !important;
+      max-height: 92vh;
+    }
+  }
+
+  /* 超小螢幕（<=380px）— 再細調 */
+  @media (max-width: 380px) {
+    .header-logo { font-size: 14px; }
+    .header-sub { font-size: 9px; }
+    .tab-btn { padding: 7px 8px; font-size: 10px; }
+    .inventory-grid { grid-template-columns: 1fr; }
+    .input-grid { grid-template-columns: 1fr; }
+    .ifield input { width: 64px; font-size: 13px; }
+    .irow label { font-size: 12px; }
   }
 </style>
 </head>
@@ -1955,6 +2161,21 @@
 <!-- ===== 當月每日工作排程表 ===== -->
 <div id="tab-monthly-schedule" class="section active">
   <div id="sched-fri-nextweek-notice"></div>
+
+  <!-- ===== Excel 匯入區塊 ===== -->
+  <div class="sched-import-bar">
+    <div class="sched-import-title">📥 從 Excel 匯入生產排程</div>
+    <div class="sched-import-hint">支援「週一～週日」日曆格式，每格如 <code>4 水餃 (11鍋), 餛飩 (42包)</code>。匯入時會先顯示預覽，確認後才寫入。</div>
+    <div class="sched-import-row">
+      <label for="sched-import-file" class="sched-import-btn">
+        <span>📁 選擇 Excel 檔案</span>
+        <input type="file" id="sched-import-file" accept=".xlsx,.xls" style="display:none" onchange="window.schedImportHandleFile(event)">
+      </label>
+      <span id="sched-import-filename" style="font-size:12px;color:var(--ink3)"></span>
+    </div>
+    <div id="sched-import-msg" style="font-size:12px;margin-top:6px;min-height:14px"></div>
+  </div>
+
   <div id="monthly-schedule-content">
     <div style="text-align:center;color:var(--ink3);padding:40px;font-size:14px">載入中…</div>
   </div>
@@ -5816,6 +6037,366 @@ function recalcOilySeasoning() {
     schedData[dateKey].note = el.value;
     schSave();
   };
+
+  // ========================================
+  // ============ EXCEL 匯入功能 ============
+  // ========================================
+
+  // 商品名稱 → id 對應（使用者說 Excel 會標明香椿/紅麴/得來素/慈濟，所以可精確對應）
+  function schedMatchProductId(name) {
+    var n = String(name || '').trim().replace(/[\s　]/g, '');
+    if (!n) return null;
+    // 具特定前綴的先比對
+    if (/餛飩料|餛飩餡/.test(n)) return 'wonton_fill';
+    if (/餛飩/.test(n))           return 'wonton';
+    if (/紅麴水餃/.test(n))       return 'dumplings_hq';
+    if (/香椿水餃/.test(n))       return 'dumplings_xc';
+    if (/水餃/.test(n))           return 'dumplings_xc'; // 後備：預設香椿
+    if (/三角圓/.test(n))         return 'triangle';
+    if (/雞腿|G腿|ｇ腿|g腿/.test(n)) return 'gleg';
+    if (/慈濟.*粽|慈濟粽/.test(n)) return 'zongzi_c';
+    if (/得來素.*粽|得來素粽/.test(n)) return 'zongzi_d';
+    if (/粽/.test(n))             return 'zongzi_d'; // 後備
+    if (/猴菇.*油飯|猴菇荷葉/.test(n)) return 'monkey_rice';
+    if (/油飯/.test(n))           return 'oily_rice';
+    if (/辣椒醬|辣椒.*肉燥/.test(n)) return 'minced_chili';
+    if (/肉燥/.test(n))           return 'minced';
+    if (/香菇頭絲|香菇絲|炒.*香菇/.test(n)) return 'mushr_shred';
+    if (/咖哩/.test(n))           return 'curry';
+    if (/胡椒鹽/.test(n))         return 'pepper_salt';
+    return null;
+  }
+
+  // 單位換算：Excel 單位 → 系統 qty
+  // 特殊規則：粽子盤 → 粒 (×130)；三角圓鍋 → 袋 (×1)
+  function schedConvertQty(prodId, qty, rawUnit) {
+    var u = String(rawUnit || '').trim();
+    if ((prodId === 'zongzi_d' || prodId === 'zongzi_c') && /盤/.test(u)) {
+      return { qty: qty * 130, converted: true, note: qty + '盤 ×130 = ' + (qty*130) + '粒' };
+    }
+    // 三角圓 鍋→袋 就是 1:1，單純數字保留
+    return { qty: qty, converted: false, note: '' };
+  }
+
+  // 解析單一格內容，回傳 { day, items:[{prod,qty,rawName,rawUnit,convNote}], note, unknowns:[] }
+  function schedParseCell(raw) {
+    if (raw === '' || raw == null) return null;
+    var text = String(raw).trim();
+    if (!text) return null;
+    // 開頭必須是日期數字
+    var dayMatch = text.match(/^(\d{1,2})(?=\D|$)/);
+    if (!dayMatch) return null;
+    var day = parseInt(dayMatch[1], 10);
+    if (day < 1 || day > 31) return null;
+
+    var rest = text.slice(dayMatch[0].length).trim();
+    var items = [];
+    var unknowns = [];
+    var note = '';
+
+    if (rest) {
+      // 比對「商品名 (數字 單位)」
+      var re = /([^\s,，()（）]+)\s*[（(]\s*([\d.]+)\s*([^)）]*?)\s*[)）]/g;
+      var m;
+      var matchedText = '';
+      while ((m = re.exec(rest)) !== null) {
+        var rawName = m[1];
+        var qty = parseFloat(m[2]);
+        var rawUnit = m[3];
+        matchedText += m[0];
+        if (isNaN(qty)) continue;
+        var pid = schedMatchProductId(rawName);
+        if (pid) {
+          var conv = schedConvertQty(pid, qty, rawUnit);
+          items.push({
+            prod: pid,
+            qty: conv.qty,
+            rawName: rawName,
+            rawQty: qty,
+            rawUnit: rawUnit,
+            convNote: conv.note
+          });
+        } else {
+          unknowns.push(rawName + '(' + qty + rawUnit + ')');
+        }
+      }
+      // 無法比對到的文字（如「勞動節」）→ 放 note
+      var residual = rest.replace(re, '').replace(/[,，]/g, '').trim();
+      if (residual) note = residual;
+      if (unknowns.length > 0) {
+        note = (note ? note + ' ' : '') + '【未知項目】' + unknowns.join('、');
+      }
+    }
+
+    return { day: day, items: items, note: note, unknowns: unknowns };
+  }
+
+  // 從 Excel 工作簿讀出所有 cell 解析結果
+  function schedReadWorkbook(file) {
+    return new Promise(function(resolve, reject) {
+      if (typeof XLSX === 'undefined') {
+        reject(new Error('XLSX 套件尚未載入，請重新整理頁面'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var wb = XLSX.read(data, { type: 'array' });
+          var sheetName = wb.SheetNames[0];
+          var ws = wb.Sheets[sheetName];
+          var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          var parsed = [];
+          for (var r = 0; r < rows.length; r++) {
+            for (var c = 0; c < 7; c++) {
+              var cell = (rows[r] || [])[c];
+              var p = schedParseCell(cell);
+              if (p) {
+                p._row = r;
+                p._col = c;
+                p._raw = String(cell);
+                parsed.push(p);
+              }
+            }
+          }
+          resolve({ rows: rows, sheetName: sheetName, parsed: parsed });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = function() { reject(new Error('檔案讀取失敗')); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // 從檔名 / sheet 名稱猜測年月
+  function schedGuessYearMonth(sheetName, fileName) {
+    var src = (fileName || '') + ' ' + (sheetName || '');
+    var m = src.match(/(\d{4})\s*年\s*(\d{1,2})\s*月/);
+    if (m) return { year: parseInt(m[1],10), month: parseInt(m[2],10) };
+    // 備援：只找 M月 → 用當前年
+    var m2 = src.match(/(\d{1,2})\s*月/);
+    if (m2) return { year: new Date().getFullYear(), month: parseInt(m2[1],10) };
+    var d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth()+1 };
+  }
+
+  // 把解析結果對應到實際年月（每月 1 號開始為目標月；第一列若出現 >=20 的日期歸屬前一月）
+  function schedAssignDates(parsedList, targetYear, targetMonth) {
+    // 第一個包含「日期 1」的 row 是目標月起點
+    var targetRow = -1;
+    for (var i = 0; i < parsedList.length; i++) {
+      if (parsedList[i].day === 1) { targetRow = parsedList[i]._row; break; }
+    }
+    if (targetRow === -1) {
+      // 找不到 1 號，預設全部算目標月（但>28 當前月）
+      targetRow = parsedList.length > 0 ? parsedList[0]._row : 0;
+    }
+    var prevYear = targetYear;
+    var prevMonth = targetMonth - 1;
+    if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+    var nextYear = targetYear;
+    var nextMonth = targetMonth + 1;
+    if (nextMonth === 13) { nextMonth = 1; nextYear++; }
+    var daysInTarget = new Date(targetYear, targetMonth, 0).getDate();
+    var daysInPrev   = new Date(prevYear, prevMonth, 0).getDate();
+
+    parsedList.forEach(function(p) {
+      // 規則：
+      // row < targetRow (或等於 targetRow 但 day >= 20)： 前一月
+      // row >= targetRow 且 day <= 7 且該 row 已經過目標月最後 → 下個月（少見）
+      // 其他：目標月
+      var month, year;
+      if (p._row < targetRow) {
+        month = prevMonth; year = prevYear;
+      } else if (p._row === targetRow && p.day >= 20) {
+        month = prevMonth; year = prevYear;
+      } else {
+        // 進入目標月的 row 之後，如果 day 小於之前看到的 day 代表跳到下月
+        month = targetMonth; year = targetYear;
+        // 簡單處理：如果目標月沒有這天（如 31 號但目標月只到 30），標為 invalid
+        if (p.day > daysInTarget) {
+          month = nextMonth; year = nextYear;
+        }
+      }
+      var maxDay = new Date(year, month, 0).getDate();
+      if (p.day > maxDay) { p._invalid = true; return; }
+      p.dateKey = year + '-' + (month<10?'0':'') + month + '-' + (p.day<10?'0':'') + p.day;
+      p.assignedYear = year;
+      p.assignedMonth = month;
+    });
+  }
+
+  // 狀態：保留本次匯入結果
+  var _importState = null;
+
+  window.schedImportHandleFile = function(ev) {
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var msgEl = document.getElementById('sched-import-msg');
+    var fnEl = document.getElementById('sched-import-filename');
+    fnEl.textContent = file.name;
+    msgEl.textContent = '讀取中…';
+    msgEl.style.color = 'var(--ink3)';
+
+    schedReadWorkbook(file).then(function(res) {
+      var guess = schedGuessYearMonth(res.sheetName, file.name);
+      _importState = {
+        fileName: file.name,
+        sheetName: res.sheetName,
+        parsed: res.parsed,
+        guess: guess
+      };
+      // 填充年月下拉
+      var ySel = document.getElementById('sched-import-year');
+      var mSel = document.getElementById('sched-import-month');
+      ySel.innerHTML = '';
+      var curY = new Date().getFullYear();
+      for (var y = curY - 1; y <= curY + 2; y++) {
+        var opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        if (y === guess.year) opt.selected = true;
+        ySel.appendChild(opt);
+      }
+      mSel.innerHTML = '';
+      for (var mm = 1; mm <= 12; mm++) {
+        var opt2 = document.createElement('option');
+        opt2.value = mm; opt2.textContent = mm;
+        if (mm === guess.month) opt2.selected = true;
+        mSel.appendChild(opt2);
+      }
+      ySel.onchange = schedImportRefreshPreview;
+      mSel.onchange = schedImportRefreshPreview;
+
+      msgEl.textContent = '✓ 讀取成功，共 ' + res.parsed.length + ' 筆日期，請在預覽確認';
+      msgEl.style.color = 'var(--green)';
+
+      schedImportRefreshPreview();
+      document.getElementById('sched-import-modal').style.display = 'flex';
+      // 重置 input 讓同一個檔案可再次選擇
+      ev.target.value = '';
+    }).catch(function(err) {
+      msgEl.textContent = '❌ 讀取失敗：' + (err.message || err);
+      msgEl.style.color = 'var(--red)';
+      ev.target.value = '';
+    });
+  };
+
+  function schedImportRefreshPreview() {
+    if (!_importState) return;
+    var y = parseInt(document.getElementById('sched-import-year').value, 10);
+    var m = parseInt(document.getElementById('sched-import-month').value, 10);
+    schedAssignDates(_importState.parsed, y, m);
+
+    var body = document.getElementById('sched-import-preview-body');
+    var rows = _importState.parsed.filter(function(p) { return !p._invalid; });
+    rows.sort(function(a, b) {
+      if (a.assignedYear !== b.assignedYear) return a.assignedYear - b.assignedYear;
+      if (a.assignedMonth !== b.assignedMonth) return a.assignedMonth - b.assignedMonth;
+      return a.day - b.day;
+    });
+
+    if (rows.length === 0) {
+      body.innerHTML = '<div style="text-align:center;color:var(--ink3);padding:40px;font-size:13px">無可匯入的資料</div>';
+    } else {
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+      html += '<thead><tr style="background:var(--ink2);color:var(--gold)">';
+      html += '<th style="padding:6px 8px;text-align:left">日期</th>';
+      html += '<th style="padding:6px 8px;text-align:left">項目（寫入系統的數量）</th>';
+      html += '<th style="padding:6px 8px;text-align:left">原始格內容</th>';
+      html += '</tr></thead><tbody>';
+      rows.forEach(function(p) {
+        var targetMonthCls = (p.assignedMonth === m && p.assignedYear === y) ? '' : 'color:var(--ink3);background:#f7f4ec';
+        html += '<tr style="border-bottom:1px solid var(--border-light);'+targetMonthCls+'">';
+        html += '<td style="padding:6px 8px;white-space:nowrap;font-weight:700;color:var(--ink2)">' + p.assignedMonth + '/' + p.day + '</td>';
+        html += '<td style="padding:6px 8px">';
+        if (p.items.length === 0) {
+          html += '<span style="color:var(--ink3)">（無）</span>';
+        } else {
+          html += p.items.map(function(it) {
+            var prodObj = PRODUCTS.find(function(pp){return pp.id===it.prod;});
+            var label = prodObj ? prodObj.label : it.prod;
+            var unit = prodObj ? prodObj.unit : '';
+            var base = '<strong style="color:var(--green)">' + label + '</strong> ' + it.qty + unit;
+            if (it.convNote) base += ' <span style="font-size:10px;color:var(--gold2)">(' + it.convNote + ')</span>';
+            return base;
+          }).join('、');
+        }
+        if (p.note) html += ' <span style="font-size:10px;color:var(--red)">[' + p.note + ']</span>';
+        html += '</td>';
+        html += '<td style="padding:6px 8px;color:var(--ink3);font-size:11px">' + (p._raw||'').replace(/</g,'&lt;') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      body.innerHTML = html;
+    }
+
+    // summary
+    var totalItems = rows.reduce(function(acc, p){ return acc + p.items.length; }, 0);
+    var unknownCnt = rows.reduce(function(acc, p){ return acc + (p.unknowns?p.unknowns.length:0); }, 0);
+    var sumEl = document.getElementById('sched-import-summary');
+    sumEl.innerHTML = '共 <strong>' + rows.length + '</strong> 天、<strong>' + totalItems + '</strong> 個項目' +
+      (unknownCnt > 0 ? '、<span style="color:var(--red)">' + unknownCnt + ' 個未辨識</span>' : '');
+  }
+
+  window.schedImportCancel = function() {
+    document.getElementById('sched-import-modal').style.display = 'none';
+  };
+
+  window.schedImportConfirm = function() {
+    if (!_importState) return;
+    var y = parseInt(document.getElementById('sched-import-year').value, 10);
+    var m = parseInt(document.getElementById('sched-import-month').value, 10);
+    var overwrite = document.getElementById('sched-import-overwrite').checked;
+
+    schLoad();
+
+    // 如覆蓋：先清除該月所有資料
+    if (overwrite) {
+      var daysInMonth = new Date(y, m, 0).getDate();
+      for (var d = 1; d <= daysInMonth; d++) {
+        var dk = y + '-' + (m<10?'0':'') + m + '-' + (d<10?'0':'') + d;
+        delete schedData[dk];
+      }
+    }
+
+    var writtenDays = 0;
+    var writtenItems = 0;
+    _importState.parsed.forEach(function(p) {
+      if (p._invalid || !p.dateKey) return;
+      var dk = p.dateKey;
+      if (!schedData[dk]) schedData[dk] = { items: [], note: '' };
+      if (!overwrite) {
+        // 增量模式：合併 items（同商品覆寫 qty）
+        p.items.forEach(function(it) {
+          var existing = schedData[dk].items.find(function(e){ return e.prod === it.prod; });
+          if (existing) existing.qty = it.qty;
+          else schedData[dk].items.push({ prod: it.prod, qty: it.qty });
+        });
+      } else {
+        schedData[dk].items = p.items.map(function(it){ return { prod: it.prod, qty: it.qty }; });
+      }
+      if (p.note) {
+        schedData[dk].note = p.note;
+      }
+      writtenDays++;
+      writtenItems += p.items.length;
+    });
+    schSave();
+
+    // 關閉 modal
+    document.getElementById('sched-import-modal').style.display = 'none';
+
+    // 重建排程頁面
+    buildMonthlySchedule();
+
+    // 顯示結果訊息
+    var msgEl = document.getElementById('sched-import-msg');
+    msgEl.innerHTML = '✅ 匯入完成：共寫入 <strong>' + writtenDays + '</strong> 天、<strong>' + writtenItems + '</strong> 個項目';
+    msgEl.style.color = 'var(--green)';
+
+    _importState = null;
+  };
 })();
 
 // ====== 清除資料 ======
@@ -7477,6 +8058,37 @@ iwrRenderAll();
     <!-- 取消 -->
     <div style="padding:12px 20px 18px;display:flex;justify-content:flex-end;border-top:1px solid var(--border-light)">
       <button onclick="hideClearAppliedModal()" style="padding:8px 22px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--ink2);font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Excel 匯入預覽 Modal ===== -->
+<div id="sched-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--paper);border:2px solid var(--border);border-radius:12px;max-width:720px;width:100%;max-height:88vh;box-shadow:0 8px 32px rgba(0,0,0,0.25);display:flex;flex-direction:column;overflow:hidden">
+    <!-- 標題 -->
+    <div style="background:var(--ink);padding:14px 20px;display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--gold)">
+      <span style="font-size:20px">📥</span>
+      <span style="font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold2);letter-spacing:2px">Excel 匯入排程預覽</span>
+    </div>
+    <!-- 年月選擇 -->
+    <div style="padding:14px 20px 8px;background:#fdf8ed;border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--ink2);font-weight:700">匯入至：</span>
+      <select id="sched-import-year" style="padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:'Noto Sans TC',sans-serif"></select>
+      <span style="font-size:13px">年</span>
+      <select id="sched-import-month" style="padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:'Noto Sans TC',sans-serif"></select>
+      <span style="font-size:13px">月</span>
+      <span style="flex:1"></span>
+      <label style="font-size:12px;color:var(--ink3);display:flex;align-items:center;gap:4px"><input type="checkbox" id="sched-import-overwrite" checked> 覆蓋該月已存在的資料</label>
+    </div>
+    <!-- 預覽內容 -->
+    <div id="sched-import-preview-body" style="padding:12px 20px;overflow-y:auto;flex:1;min-height:160px;font-size:13px"></div>
+    <!-- 底部按鈕 -->
+    <div style="padding:12px 20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border-light);gap:10px;flex-wrap:wrap">
+      <span id="sched-import-summary" style="font-size:12px;color:var(--ink3)"></span>
+      <div style="display:flex;gap:8px">
+        <button onclick="window.schedImportCancel()" style="padding:8px 22px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--ink2);font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">取消</button>
+        <button id="sched-import-confirm-btn" onclick="window.schedImportConfirm()" style="padding:8px 22px;border:none;border-radius:6px;background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif">✓ 確認寫入</button>
+      </div>
     </div>
   </div>
 </div>
