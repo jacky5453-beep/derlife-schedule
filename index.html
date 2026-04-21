@@ -740,6 +740,61 @@
     color: var(--gold2);
   }
 
+  /* ===== 月份切換器 ===== */
+  .sched-month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #fdf8ed, #f5ead8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+  }
+  .sched-month-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink2);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sched-nav-btn {
+    background: var(--ink2);
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: all 0.2s;
+    min-width: 42px;
+  }
+  .sched-nav-btn:hover {
+    background: var(--ink);
+    color: var(--gold2);
+  }
+  .sched-today-btn {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    letter-spacing: 1px;
+  }
+  .sched-today-btn:hover { opacity: 0.85; }
+
   /* ==============================================
      ========== RWD 全面改造（響應式設計） =========
      ============================================== */
@@ -5635,16 +5690,72 @@ function recalcOilySeasoning() {
   }
 
   // ── BUILD THE MONTHLY CALENDAR ──
-  window.buildMonthlySchedule = function() {
+  // 目前檢視中的年月（可透過月份切換器改變）
+  window._schedViewYear = null;
+  window._schedViewMonth = null;
+
+  window.schedChangeMonth = function(delta) {
+    var y = window._schedViewYear;
+    var m = window._schedViewMonth;
+    m += delta;
+    if (m > 12) { m = 1; y++; }
+    if (m < 1)  { m = 12; y--; }
+    window._schedViewYear = y;
+    window._schedViewMonth = m;
+    buildMonthlySchedule(y, m);
+  };
+
+  window.schedGotoMonth = function() {
+    var y = parseInt(document.getElementById('sched-view-year').value, 10);
+    var m = parseInt(document.getElementById('sched-view-month').value, 10);
+    window._schedViewYear = y;
+    window._schedViewMonth = m;
+    buildMonthlySchedule(y, m);
+  };
+
+  window.schedGotoToday = function() {
     var now = new Date();
-    var year = now.getFullYear();
-    var month = now.getMonth() + 1;
+    window._schedViewYear = now.getFullYear();
+    window._schedViewMonth = now.getMonth() + 1;
+    buildMonthlySchedule(window._schedViewYear, window._schedViewMonth);
+  };
+
+  window.buildMonthlySchedule = function(viewYear, viewMonth) {
+    var now = new Date();
+    var year = viewYear || window._schedViewYear || now.getFullYear();
+    var month = viewMonth || window._schedViewMonth || (now.getMonth() + 1);
+    window._schedViewYear = year;
+    window._schedViewMonth = month;
     var daysInMonth = new Date(year, month, 0).getDate();
+    var isCurrentMonth = (year === now.getFullYear() && month === (now.getMonth() + 1));
 
     schLoad();
 
     var html = '';
-    html += '<div class="section-title">📅 ' + year + ' 年 ' + month + ' 月　每日工作排程表</div>';
+
+    // 月份切換器
+    html += '<div class="sched-month-nav">';
+    html += '<button class="sched-nav-btn" onclick="schedChangeMonth(-1)" title="上個月">◀</button>';
+    html += '<div class="sched-month-title">📅 ';
+    // 年月下拉
+    html += '<select id="sched-view-year" onchange="schedGotoMonth()" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:14px;font-weight:700;font-family:\'Noto Sans TC\',sans-serif;background:#fffef9">';
+    for (var yy = year - 2; yy <= year + 2; yy++) {
+      html += '<option value="'+yy+'"'+(yy===year?' selected':'')+'>'+yy+'</option>';
+    }
+    html += '</select> 年 ';
+    html += '<select id="sched-view-month" onchange="schedGotoMonth()" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:14px;font-weight:700;font-family:\'Noto Sans TC\',sans-serif;background:#fffef9">';
+    for (var mm = 1; mm <= 12; mm++) {
+      html += '<option value="'+mm+'"'+(mm===month?' selected':'')+'>'+mm+'</option>';
+    }
+    html += '</select> 月';
+    html += '</div>';
+    html += '<button class="sched-nav-btn" onclick="schedChangeMonth(1)" title="下個月">▶</button>';
+    if (!isCurrentMonth) {
+      html += '<button class="sched-today-btn" onclick="schedGotoToday()">回到本月</button>';
+    }
+    html += '</div>';
+
+    html += '<div class="section-title">' + year + ' 年 ' + month + ' 月　每日工作排程表</div>';
     html += '<div class="notice">點選日期展開後可輸入製作項目與數量。<strong>當週三</strong>資料會自動帶入下週的「本次製作」供參考。</div>';
 
     // 下週彙總帶入區塊
@@ -6404,12 +6515,14 @@ function recalcOilySeasoning() {
     // 關閉 modal
     document.getElementById('sched-import-modal').style.display = 'none';
 
-    // 重建排程頁面
-    buildMonthlySchedule();
+    // 切到匯入的那個月（重點：讓使用者看到剛匯入的資料）
+    window._schedViewYear = y;
+    window._schedViewMonth = m;
+    buildMonthlySchedule(y, m);
 
     // 顯示結果訊息
     var msgEl = document.getElementById('sched-import-msg');
-    msgEl.innerHTML = '✅ 匯入完成：共寫入 <strong>' + writtenDays + '</strong> 天、<strong>' + writtenItems + '</strong> 個項目';
+    msgEl.innerHTML = '✅ 匯入完成：已寫入 <strong>' + y + '年' + m + '月</strong>，共 <strong>' + writtenDays + '</strong> 天、<strong>' + writtenItems + '</strong> 個項目（畫面已切換到該月）';
     msgEl.style.color = 'var(--green)';
 
     _importState = null;
