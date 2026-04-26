@@ -8226,7 +8226,7 @@ iwrRenderAll();
 <!-- ===== Firebase Authentication + 白名單驗證 ===== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence }
+  import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, setDoc, deleteDoc, getDoc, getDocs, collection, serverTimestamp }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -8343,16 +8343,30 @@ iwrRenderAll();
     }
   })();
 
-  // ===== 登入（直接用 redirect，避開 Chrome COOP popup 問題） =====
+  // ===== 登入：手機用 popup（避免 mobile cross-origin cookie 問題）、桌機用 redirect（避免 GitHub Pages COOP 問題）=====
+  const isMobileBrowser = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   document.getElementById('btn-google-login').addEventListener('click', async () => {
     const msg = document.getElementById('auth-msg');
-    msg.textContent = '轉跳 Google 登入頁…';
     msg.className = 'auth-msg';
     try {
-      await signInWithRedirect(auth, provider);
+      if (isMobileBrowser) {
+        msg.textContent = '開啟 Google 登入…';
+        await signInWithPopup(auth, provider);
+        // popup 成功後 onAuthStateChanged 會自動接手
+      } else {
+        msg.textContent = '轉跳 Google 登入頁…';
+        await signInWithRedirect(auth, provider);
+      }
     } catch (err) {
-      console.error('[AUTH] signInWithRedirect 失敗：', err);
-      msg.textContent = '登入失敗：' + (err.code || err.message);
+      console.error('[AUTH] 登入失敗：', err);
+      if (err.code === 'auth/popup-blocked') {
+        msg.textContent = '登入視窗被封鎖，請允許快顯視窗後再試';
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        msg.textContent = '登入視窗已關閉，請重新點擊登入';
+      } else {
+        msg.textContent = '登入失敗：' + (err.code || err.message);
+      }
       msg.className = 'auth-msg error';
     }
   });
